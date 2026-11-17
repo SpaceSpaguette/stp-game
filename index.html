@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>STP Broadcast Storm — Gruvbox Network Game</title>
+  <style>
+    /* ==========================================================================
+       Gruvbox Dark Hard Palette
+       ========================================================================== */
+    :root {
+      /* Backgrounds */
+      --gb-bg0-h: #1d2021;
+      --gb-bg0:   #282828;
+      --gb-bg1:   #3c3836;
+      --gb-bg2:   #504945;
+      --gb-bg3:   #665c54;
+      --gb-bg4:   #7c6f64;
+
+      /* Foregrounds */
+      --gb-fg0:   #fbf1c7;
+      --gb-fg1:   #ebdbb2;
+      --gb-fg2:   #d5c4a1;
+      --gb-fg3:   #bdae93;
+      --gb-fg4:   #a89984;
+      --gb-gray:  #928374;
+
+      /* Normal Accents */
+      --gb-red:    #cc241d;
+      --gb-green:  #98971a;
+      --gb-yellow: #d79921;
+      --gb-blue:   #458588;
+      --gb-purple: #b16286;
+      --gb-aqua:   #689d6a;
+      --gb-orange: #d65d0e;
+
+      /* Bright Accents */
+      --gb-red-bright:    #fb4934;
+      --gb-green-bright:  #b8bb26;
+      --gb-yellow-bright: #fabd2f;
+      --gb-blue-bright:   #83a598;
+      --gb-purple-bright: #d3869b;
+      --gb-aqua-bright:   #8ec07c;
+      --gb-orange-bright: #fe8019;
+
+      /* Semantic Tokens */
+      --bg-page:      var(--gb-bg0-h);
+      --bg-surface:   var(--gb-bg0);
+      --bg-elevated:  var(--gb-bg1);
+      --border-muted: var(--gb-bg2);
+      --border-focus: var(--gb-yellow-bright);
+      --text-main:    var(--gb-fg1);
+      --text-bright:  var(--gb-fg0);
+      --text-muted:   var(--gb-fg4);
+      --accent:       var(--gb-orange-bright);
+      --accent-alt:   var(--gb-aqua-bright);
+      --danger:       var(--gb-red-bright);
+      --success:      var(--gb-green-bright);
+
+      --font-mono: ui-monospace, "Cascadia Mono", "Fira Code", "JetBrains Mono", Consolas, monospace;
+      --radius: 4px;
+    }
+
+    /* ==========================================================================
+       Base & Cross-Browser Compatibility (Firefox primary, Chromium compatible)
+       ========================================================================== */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: dark;
+      scrollbar-width: thin;
+      scrollbar-color: var(--gb-bg3) var(--gb-bg0-h);
+      -webkit-text-size-adjust: 100%;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--gb-bg0-h);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--gb-bg3);
+      border-radius: var(--radius);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gb-bg4);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.45;
+      -moz-osx-font-smoothing: grayscale;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ==========================================================================
+       Game Shell Layout
+       ========================================================================== */
+    .game-shell {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background-color: var(--bg-surface);
+      border: 2px solid var(--border-muted);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .game-hud {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      background-color: var(--bg-page);
+      border: 1px solid var(--border-muted);
+      border-radius: var(--radius);
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .game-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--gb-yellow-bright);
+    }
+
+    .stage-badge {
+      padding: 2px 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background-color: var(--gb-bg1);
+      color: var(--gb-aqua-bright);
+      border: 1px solid var(--gb-aqua);
+      border-radius: var(--radius);
+    }
+
+    .hud-stats {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .hud-stats strong {
+      color: var(--text-bright);
+    }
+
+    .timer-box {
+      padding: 3px 10px;
+      background-color: var(--gb-bg1);
+      border: 1px solid var(--gb-bg3);
+      border-radius: var(--radius);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-box.timer-active {
+      border-color: var(--gb-yellow-bright);
+      color: var(--gb-yellow-bright);
+    }
+
+    .timer-box.timer-danger {
+      border-color: var(--gb-red-bright);
+      background-color: rgba(204, 36, 29, 0.2);
+      color: var(--gb-red-bright);
+    }
+
+    /* ==========================================================================
+       Mission / Rules Banner
+       ========================================================================== */
+    .mission-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 12px;
+      background-color: var(--gb-bg1);
+      border-left: 4px solid var(--gb-orange-bright);
+      border-radius: var(--radius);
+      font-size: 0.83rem;
+      color: var(--gb-fg2);
+    }
+
+    .legend-list {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--gb-fg3);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border-radius: 2px;
+      border: 1px solid rgba(251, 241, 199, 0.35);
+    }
+
+    .swatch-yellow { background-color: var(--gb-yellow-bright); }
+    .swatch-white  { background-color: var(--gb-fg0); }
+    .swatch-red    { background-color: var(--gb-red-bright); }
+    .swatch-green  { background-color: var(--gb-green-bright); }
+
+    /* ==========================================================================
+       Playfield / Canvas Stage & Overlays
+       ========================================================================== */
+    .game-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: var(--bg-page);
+      border: 2px solid var(--border-muted);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
+    }
+
+    /* Overlay Screens (Game Over / Stage Complete / Victory) */
+    .stage-overlay {
+      position: absolute;
+      inset: 0;
+      background-color: rgba(29, 32, 33, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      z-index: 10;
+      transition: opacity 150ms ease;
+    }
+
+    .stage-overlay.hidden {
+      display: none;
+    }
+
+    .overlay-card {
+      max-width: 500px;
+      width: 100%;
+      background-color: var(--gb-bg0);
+      border: 2px solid var(--gb-bg3);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75);
+    }
+
+    .overlay-card.error-card {
+      border-color: var(--gb-red-bright);
+    }
+
+    .overlay-card.success-card {
+      border-color: var(--gb-green-bright);
+    }
+
+    .overlay-title {
+      margin: 0 0 8px 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .overlay-title.error-text {
+      color: var(--gb-red-bright);
+    }
+
+    .overlay-title.success-text {
+      color: var(--gb-green-bright);
+    }
+
+    .overlay-subtitle {
+      margin: 0 0 16px 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gb-yellow-bright);
+    }
+
+    .overlay-desc {
+      margin: 0 0 20px 0;
+      font-size: 0.88rem;
+      color: var(--gb-fg2);
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       Controls & Buttons
+       ========================================================================== */
+    .game-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 2px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      appearance: none;
+      -moz-appearance: none;
+      -webkit-appearance: none;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 8px 15px;
+      color: var(--text-bright);
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--gb-bg3);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: var(--gb-bg2);
+      border-color: var(--gb-fg4);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background-color: var(--gb-orange);
+      border-color: var(--gb-orange-bright);
+      color: var(--gb-fg0);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--gb-orange-bright);
+      color: var(--gb-bg0-h);
+    }
+
+    .btn-success {
+      background-color: var(--gb-green);
+      border-color: var(--gb-green-bright);
+      color: var(--gb-fg0);
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background-color: var(--gb-green-bright);
+      color: var(--gb-bg0-h);
+    }
+
+    .btn-danger {
+      background-color: var(--gb-red);
+      border-color: var(--gb-red-bright);
+      color: var(--gb-fg0);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background-color: var(--gb-red-bright);
+      color: var(--gb-bg0-h);
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <!-- Top HUD -->
+    <header class="game-hud">
+      <div class="brand-block">
+        <h1 class="game-title">STP // SPANNING TREE PROTOCOL</h1>
+        <span class="stage-badge" id="hud-stage">STAGE 1 / 4</span>
+      </div>
+      <div class="hud-stats">
+        <span>PACKETS: <strong id="hud-packets">0</strong></span>
+        <span>STATUS: <strong id="hud-status">CONFIGURE STP</strong></span>
+        <span class="timer-box" id="hud-timer-box">TIME: <strong id="hud-timer">15.0s</strong></span>
+      </div>
+    </header>
+
+    <!-- Instructions & Color Legend -->
+    <div class="mission-bar">
+      <div id="mission-text">
+        <strong>Stage 1:</strong> Elect the <strong>Root Switch</strong> (connected to the Router triangle) &amp; click cables/ports to disable loops.
+      </div>
+      <div class="legend-list">
+        <span class="legend-item"><span class="swatch swatch-yellow"></span>Root Switch</span>
+        <span class="legend-item"><span class="swatch swatch-white"></span>Normal Switch</span>
+        <span class="legend-item"><span class="swatch swatch-red"></span>All Ports Disabled / Cable Off</span>
+        <span class="legend-item"><span class="swatch swatch-green"></span>Cable Enabled</span>
+      </div>
+    </div>
+
+    <!-- Canvas Playfield -->
+    <section class="game-stage" aria-label="Network topology playfield">
+      <canvas id="game-canvas" width="900" height="506"></canvas>
+
+      <!-- Overlay Screen (Retry / Next Stage / Victory) -->
+      <div class="stage-overlay hidden" id="stage-overlay" role="dialog" aria-modal="true">
+        <div class="overlay-card error-card" id="overlay-card">
+          <h2 class="overlay-title error-text" id="overlay-title">ERROR - Too many broadcasts</h2>
+          <p class="overlay-subtitle" id="overlay-subtitle">BROADCAST STORM DETECTED</p>
+          <p class="overlay-desc" id="overlay-desc">
+            A network cycle caused broadcast packets to multiply and loop back to the router after the 15-second limit expired.
+          </p>
+          <div class="btn-group" style="justify-content: center;">
+            <button type="button" class="btn btn-danger" id="btn-overlay-retry">Retry Stage</button>
+            <button type="button" class="btn btn-success hidden" id="btn-overlay-next">Next Stage &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Controls -->
+    <footer class="game-controls">
+      <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="btn-send-packet">&#9654; Send Packet (Check STP)</button>
+        <button type="button" class="btn" id="btn-reset-stage">New Random Layout</button>
+      </div>
+      <span class="hint" id="footer-hint">Click switch: Elect Root &bull; Click cable/port: Enable/Disable</span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      /* ========================================================================
+         Gruvbox Dark Hard Constants
+         ======================================================================== */
+      const COLORS = {
+        bgHard:       "#1d2021",
+        bg0:          "#282828",
+        bg1:          "#3c3836",
+        bg2:          "#504945",
+        bg3:          "#665c54",
+        fg0:          "#fbf1c7",
+        fg1:          "#ebdbb2",
+        fg2:          "#d5c4a1",
+        fg4:          "#a89984",
+        gray:         "#928374",
+        red:          "#cc241d",
+        redBright:    "#fb4934",
+        green:        "#98971a",
+        greenBright:  "#b8bb26",
+        yellow:       "#d79921",
+        yellowBright: "#fabd2f",
+        blue:         "#458588",
+        blueBright:   "#83a598",
+        purpleBright: "#d3869b",
+        aqua:         "#689d6a",
+        aquaBright:   "#8ec07c",
+        orange:       "#d65d0e",
+        orangeBright: "#fe8019"
+      };
+
+      /* ========================================================================
+         Stage Configurations (4 Stages)
+         ======================================================================== */
+      const STAGES = [
+        {
+          number: 1,
+          title: "Stage 1: Basic Spanning Tree",
+          hasPriority: false,
+          extraEdges: 2,
+          missionHtml:
+            "<strong>Stage 1 (STP Basics):</strong> Select the <strong>Root Switch</strong> (connected to the Router triangle) and disable redundant green cables to prevent a broadcast storm.",
+          footerHint:
+            "Click a Switch: Elect Root (Yellow) • Click any Cable/Port: Toggle Enabled (Green) / Disabled (Red)",
+          // Slots grouped by layer so graphs are random yet readable
+          slots: [
+            { layer: 1, x: 450, y: 155 }, // Index 0: Gateway switch connected to Router
+            { layer: 2, x: 255, y: 290 },
+            { layer: 2, x: 645, y: 290 },
+            { layer: 3, x: 450, y: 415 }
+          ]
+        },
+        {
+          number: 2,
+          title: "Stage 2: Dense Switch Topology",
+          hasPriority: false,
+          extraEdges: 4,
+          missionHtml:
+            "<strong>Stage 2 (More Switches):</strong> Larger topology with multiple loops! Elect the <strong>Root Switch</strong> and disable cables so every switch is reachable with <strong>zero cycles</strong>.",
+          footerHint:
+            "Click a Switch: Elect Root (Yellow) • Click any Cable/Port: Toggle Enabled (Green) / Disabled (Red)",
+          slots: [
+            { layer: 1, x: 450, y: 145 }, // Index 0: Gateway switch connected to Router
+            { layer: 2, x: 230, y: 255 },
+            { layer: 2, x: 670, y: 255 },
+            { layer: 3, x: 185, y: 395 },
+            { layer: 3, x: 450, y: 385 },
+            { layer: 3, x: 715, y: 395 }
+          ]
+        },
+        {
+          number: 3,
+          title: "Stage 3: Simplified Layer Priority",
+          hasPriority: true,
+          extraEdges: 3,
+          missionHtml:
+            "<strong>Stage 3 (Simplified Priority):</strong> Elect the <strong>Root Switch</strong>, break all loops, AND increment each switch's priority number inside its rectangle: <strong>1</strong> = Root, <strong>2</strong> = 2nd layer, <strong>3</strong> = 3rd layer, etc.",
+          footerHint:
+            "Click Switch number: Increment Priority (1, 2, 3...) • Click [ROOT] badge or Right-Click: Elect Root • Click Cable: Toggle",
+          slots: [
+            { layer: 1, x: 450, y: 145 }, // Index 0: Gateway switch
+            { layer: 2, x: 250, y: 270 },
+            { layer: 2, x: 650, y: 270 },
+            { layer: 3, x: 290, y: 410 },
+            { layer: 3, x: 610, y: 410 }
+          ]
+        },
+        {
+          number: 4,
+          title: "Stage 4: Core Network & Multi-Layer Priority",
+          hasPriority: true,
+          extraEdges: 5,
+          missionHtml:
+            "<strong>Stage 4 (Final Exam):</strong> 7 switches with heavy redundancy! Elect the <strong>Root Switch (Priority 1)</strong>, eliminate all loops, and set every switch's layer priority (<strong>1, 2, 3, 4...</strong>) from the Root.",
+          footerHint:
+            "Click Switch number: Increment Priority (1, 2, 3, 4...) • Click [ROOT] badge or Right-Click: Elect Root • Click Cable: Toggle",
+          slots: [
+            { layer: 1, x: 450, y: 138 }, // Index 0: Gateway switch
+            { layer: 2, x: 245, y: 235 },
+            { layer: 2, x: 655, y: 235 },
+            { layer: 3, x: 170, y: 350 },
+            { layer: 3, x: 450, y: 340 },
+            { layer: 3, x: 730, y: 350 },
+            { layer: 4, x: 450, y: 445 }
+          ]
+        }
+      ];
+
+      /* ========================================================================
+         DOM Elements & State
+         ======================================================================== */
+      const canvas = document.getElementById("game-canvas");
+      const ctx = canvas.getContext("2d");
+
+      const hudStage = document.getElementById("hud-stage");
+      const hudPackets = document.getElementById("hud-packets");
+      const hudStatus = document.getElementById("hud-status");
+      const hudTimer = document.getElementById("hud-timer");
+      const hudTimerBox = document.getElementById("hud-timer-box");
+      const missionText = document.getElementById("mission-text");
+      const footerHint = document.getElementById("footer-hint");
+
+      const stageOverlay = document.getElementById("stage-overlay");
+      const overlayCard = document.getElementById("overlay-card");
+      const overlayTitle = document.getElementById("overlay-title");
+      const overlaySubtitle = document.getElementById("overlay-subtitle");
+      const overlayDesc = document.getElementById("overlay-desc");
+      const btnOverlayRetry = document.getElementById("btn-overlay-retry");
+      const btnOverlayNext = document.getElementById("btn-overlay-next");
+
+      const btnSendPacket = document.getElementById("btn-send-packet");
+      const btnResetStage = document.getElementById("btn-reset-stage");
+
+      const TIME_LIMIT = 15.0; // Exact 15-second limit
+      const MAX_CIRCLES = 70;  // Cap simultaneous storm circles to keep 60fps smooth
+
+      let currentStageIdx = 0;
+      let router = { x: 450, y: 48, radius: 24, errorText: "" };
+      let switches = [];
+      let cables = []; // { id, u, v, enabled, isRouterLink }
+      let rootSwitchId = null;
+
+      // Packet Simulation & Timer State
+      let simRunning = false;
+      let timeRemaining = TIME_LIMIT;
+      let circles = []; // { fromType, fromId, toType, toId, cableId, progress, speed, x, y, bounce }
+      let routerReturnCount = 0;
+      let stormDetected = false;
+      let priorityErrorDetected = false;
+      let rootErrorDetected = false;
+      let hoveredItem = null;
+      let lastFrameTime = performance.now();
+
+      /* ========================================================================
+         Geometry & Topology Helpers
+         ======================================================================== */
+      function distToSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+      }
+
+      function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+        const ccw = (p1x, p1y, p2x, p2y, p3x, p3y) =>
+          (p3y - p1y) * (p2x - p1x) > (p2y - p1y) * (p3x - p1x);
+        return (
+          ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy) &&
+          ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy)
+        );
+      }
+
+      function edgePassesThroughSwitch(uIdx, vIdx, nodes) {
+        const u = nodes[uIdx];
+        const v = nodes[vIdx];
+        for (let i = 0; i < nodes.length; i++) {
+          if (i === uIdx || i === vIdx) continue;
+          const s = nodes[i];
+          const d = distToSegment(s.x, s.y, u.x, u.y, v.x, v.y);
+          if (d < 58) return true;
+        }
+        return false;
+      }
+
+      function shuffle(arr) {
+        const copy = arr.slice();
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      }
+
+      /* ========================================================================
+         Stage Topology Generator
+         ======================================================================== */
+      function generateStage(stageIdx) {
+        const stage = STAGES[stageIdx];
+        stopSimulation();
+        hideOverlay();
+
+        router = {
+          x: 450,
+          y: 46,
+          radius: 24,
+          errorText: ""
+        };
+
+        // Create switches with subtle position jitter for organic random feel
+        switches = stage.slots.map((slot, idx) => {
+          const jitterX = idx === 0 ? 0 : (Math.random() - 0.5) * 34;
+          const jitterY = idx === 0 ? 0 : (Math.random() - 0.5) * 16;
+          return {
+            id: idx,
+            label: `SW-${idx + 1}`,
+            x: Math.round(slot.x + jitterX),
+            y: Math.round(slot.y + jitterY),
+            w: stage.hasPriority ? 116 : 104,
+            h: stage.hasPriority ? 60 : 50,
+            layerHint: slot.layer,
+            priority: 0, // Used in Stages 3 & 4 (1 = root, 2 = 2nd layer, etc.)
+            receivedPacket: false,
+            pulseTime: 0,
+            hasError: false
+          };
+        });
+
+        rootSwitchId = null;
+        cables = [];
+
+        // Cable 0: Router triangle connected to Gateway Switch (SW-1, id: 0)
+        cables.push({
+          id: 0,
+          uType: "router",
+          u: 0,
+          vType: "switch",
+          v: 0,
+          enabled: true,
+          isRouterLink: true
+        });
+
+        // Build all candidate switch-to-switch pairs that don't pass through another switch
+        const n = switches.length;
+        const candidatePairs = [];
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            const layerDiff = Math.abs(switches[i].layerHint - switches[j].layerHint);
+            if (layerDiff <= 1 && !edgePassesThroughSwitch(i, j, switches)) {
+              candidatePairs.push([i, j]);
+            }
+          }
+        }
+
+        // Fallback if needed: allow layerDiff <= 2 if not passing through switches
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            const already = candidatePairs.some(([a, b]) => a === i && b === j);
+            if (!already && !edgePassesThroughSwitch(i, j, switches)) {
+              candidatePairs.push([i, j]);
+            }
+          }
+        }
+
+        // Step 1: Build a random Spanning Tree starting from Switch 0
+        const inTree = new Set([0]);
+        const chosenEdges = [];
+        const pairKey = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+        const usedKeys = new Set();
+
+        while (inTree.size < n) {
+          const validStepEdges = shuffle(candidatePairs).filter(([a, b]) => {
+            const aIn = inTree.has(a);
+            const bIn = inTree.has(b);
+            return (aIn && !bIn) || (!aIn && bIn);
+          });
+
+          const chosen = validStepEdges[0];
+          if (!chosen) break;
+          const [a, b] = chosen;
+          inTree.add(a);
+          inTree.add(b);
+          chosenEdges.push([a, b]);
+          usedKeys.add(pairKey(a, b));
+        }
+
+        // Step 2: Add extra random cables to create cycles (broadcast storm loops!)
+        const remainingPairs = shuffle(candidatePairs).filter(
+          ([a, b]) => !usedKeys.has(pairKey(a, b))
+        );
+
+        // Prefer non-crossing extra edges first, then allow others if needed
+        let addedExtra = 0;
+        for (const [a, b] of remainingPairs) {
+          if (addedExtra >= stage.extraEdges) break;
+          const ua = switches[a];
+          const ub = switches[b];
+          const crossesExisting = chosenEdges.some(([ca, cb]) => {
+            if (ca === a || ca === b || cb === a || cb === b) return false;
+            return segmentsIntersect(
+              ua.x, ua.y, ub.x, ub.y,
+              switches[ca].x, switches[ca].y, switches[cb].x, switches[cb].y
+            );
+          });
+          if (!crossesExisting) {
+            chosenEdges.push([a, b]);
+            usedKeys.add(pairKey(a, b));
+            addedExtra++;
+          }
+        }
+
+        for (const [a, b] of remainingPairs) {
+          if (addedExtra >= stage.extraEdges) break;
+          if (!usedKeys.has(pairKey(a, b))) {
+            chosenEdges.push([a, b]);
+            usedKeys.add(pairKey(a, b));
+            addedExtra++;
+          }
+        }
+
+        // Add all chosen switch-to-switch cables (all enabled green initially)
+        chosenEdges.forEach(([u, v], idx) => {
+          cables.push({
+            id: idx + 1,
+            uType: "switch",
+            u,
+            vType: "switch",
+            v,
+            enabled: true,
+            isRouterLink: false
+          });
+        });
+
+        updateHudUI();
+      }
+
+      /* ========================================================================
+         HUD & Overlay Updates
+         ======================================================================== */
+      function updateHudUI() {
+        const stage = STAGES[currentStageIdx];
+        hudStage.textContent = `STAGE ${stage.number} / ${STAGES.length}`;
+        missionText.innerHTML = stage.missionHtml;
+        footerHint.textContent = stage.footerHint;
+        hudPackets.textContent = String(circles.length);
+        hudTimer.textContent = `${timeRemaining.toFixed(1)}s`;
+
+        hudTimerBox.classList.remove("timer-active", "timer-danger");
+        if (simRunning) {
+          if (timeRemaining <= 5.0 || stormDetected) {
+            hudTimerBox.classList.add("timer-danger");
+          } else {
+            hudTimerBox.classList.add("timer-active");
+          }
+        }
+
+        if (router.errorText) {
+          hudStatus.textContent = router.errorText;
+          hudStatus.style.color = COLORS.redBright;
+        } else if (simRunning) {
+          hudStatus.textContent = "BROADCASTING...";
+          hudStatus.style.color = COLORS.yellowBright;
+        } else {
+          hudStatus.textContent = rootSwitchId !== null ? `ROOT: SW-${rootSwitchId + 1}` : "SELECT ROOT";
+          hudStatus.style.color = rootSwitchId !== null ? COLORS.greenBright : COLORS.fg1;
+        }
+      }
+
+      function showOverlay({ isError, title, subtitle, desc, showNext }) {
+        stageOverlay.classList.remove("hidden");
+        overlayCard.className = `overlay-card ${isError ? "error-card" : "success-card"}`;
+        overlayTitle.className = `overlay-title ${isError ? "error-text" : "success-text"}`;
+        overlayTitle.textContent = title;
+        overlaySubtitle.textContent = subtitle;
+        overlayDesc.textContent = desc;
+
+        if (showNext) {
+          btnOverlayNext.classList.remove("hidden");
+        } else {
+          btnOverlayNext.classList.add("hidden");
+        }
+      }
+
+      function hideOverlay() {
+        stageOverlay.classList.add("hidden");
+      }
+
+      /* ========================================================================
+         Switch & Cable State Queries
+         ======================================================================== */
+      function getSwitchEnabledCableCount(switchId) {
+        let count = 0;
+        for (const c of cables) {
+          if (!c.enabled) continue;
+          if (
+            (c.uType === "switch" && c.u === switchId) ||
+            (c.vType === "switch" && c.v === switchId)
+          ) {
+            count++;
+          }
+        }
+        return count;
+      }
+
+      // Compute true BFS layer distance from the Root switch along enabled cables
+      // Root = 1, 2nd layer = 2, 3rd layer = 3, etc.
+      function computeExpectedPriorities() {
+        const dist = new Map();
+        if (rootSwitchId === null) return dist;
+        dist.set(rootSwitchId, 1);
+        const queue = [rootSwitchId];
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          const currDist = dist.get(curr);
+          for (const c of cables) {
+            if (!c.enabled || c.isRouterLink) continue;
+            let next = null;
+            if (c.u === curr) next = c.v;
+            else if (c.v === curr) next = c.u;
+            if (next !== null && !dist.has(next)) {
+              dist.set(next, currDist + 1);
+              queue.push(next);
+            }
+          }
+        }
+        return dist;
+      }
+
+      /* ========================================================================
+         Broadcast Packet Simulation (Circles & 15s Timer)
+         ======================================================================== */
+      function stopSimulation() {
+        simRunning = false;
+        timeRemaining = TIME_LIMIT;
+        circles = [];
+        routerReturnCount = 0;
+        stormDetected = false;
+        priorityErrorDetected = false;
+        rootErrorDetected = false;
+        router.errorText = "";
+        btnSendPacket.disabled = false;
+        for (const sw of switches) {
+          sw.receivedPacket = false;
+          sw.hasError = false;
+        }
+        updateHudUI();
+      }
+
+      function startPacketCheck() {
+        if (simRunning) return;
+        hideOverlay();
+
+        simRunning = true;
+        timeRemaining = TIME_LIMIT;
+        circles = [];
+        routerReturnCount = 0;
+        stormDetected = false;
+        priorityErrorDetected = false;
+        rootErrorDetected = false;
+        router.errorText = "";
+        btnSendPacket.disabled = true;
+
+        for (const sw of switches) {
+          sw.receivedPacket = false;
+          sw.hasError = false;
+        }
+
+        // Spawn the single initial broadcast circle from the Router triangle
+        const routerCable = cables[0];
+        spawnCircle("router", 0, "switch", routerCable.v, routerCable.id, 1, false);
+        updateHudUI();
+      }
+
+      function getEntityCoords(type, id) {
+        if (type === "router") return { x: router.x, y: router.y };
+        const sw = switches[id];
+        return { x: sw.x, y: sw.y };
+      }
+
+      function spawnCircle(fromType, fromId, toType, toId, cableId, expectedLayer, bounce) {
+        if (circles.length >= MAX_CIRCLES) return;
+        const start = getEntityCoords(fromType, fromId);
+        const end = getEntityCoords(toType, toId);
+        const distance = Math.hypot(end.x - start.x, end.y - start.y);
+        const speedPxPerSec = 215; // Crisp readable traversal speed
+
+        circles.push({
+          fromType,
+          fromId,
+          toType,
+          toId,
+          cableId,
+          expectedLayer,
+          bounce: Boolean(bounce),
+          progress: 0,
+          duration: Math.max(0.35, distance / speedPxPerSec),
+          x: start.x,
+          y: start.y
+        });
+      }
+
+      function handleCircleArrival(circle) {
+        const stage = STAGES[currentStageIdx];
+        const cable = cables.find((c) => c.id === circle.cableId);
+
+        // If the cable was disabled mid-flight, drop the circle
+        if (!cable || !cable.enabled) return;
+
+        // 1. Circle arrived back at the Router! (Broadcast storm / loop back to router)
+        if (circle.toType === "router") {
+          routerReturnCount++;
+          stormDetected = true;
+          router.errorText = "ERROR - Too many broadcasts";
+
+          // If this was a bounced circle (wrong root/priority on a tree), reflect it so it remains active
+          if (circle.bounce) {
+            spawnCircle("router", 0, "switch", circle.fromId, cable.id, 1, true);
+          }
+          return;
+        }
+
+        // 2. Circle arrived at a Switch
+        const sw = switches[circle.toId];
+        sw.pulseTime = 0.35;
+        sw.receivedPacket = true;
+
+        let localError = circle.bounce;
+
+        // If this came from the Router, verify the switch is elected as the Root Switch (id === 0)
+        if (circle.fromType === "router" && rootSwitchId !== sw.id) {
+          rootErrorDetected = true;
+          sw.hasError = true;
+          localError = true;
+        }
+
+        // In Stages 3 & 4, verify the Simplified Priority number inside the switch rectangle
+        if (stage.hasPriority && sw.priority !== circle.expectedLayer) {
+          priorityErrorDetected = true;
+          sw.hasError = true;
+          localError = true;
+        }
+
+        // Find all OTHER enabled cables connected to this switch to rebroadcast the circle
+        const outgoingCables = [];
+        for (const outCable of cables) {
+          if (!outCable.enabled || outCable.id === cable.id) continue;
+          if (
+            (outCable.uType === "switch" && outCable.u === sw.id) ||
+            (outCable.vType === "switch" && outCable.v === sw.id)
+          ) {
+            outgoingCables.push(outCable);
+          }
+        }
+
+        if (outgoingCables.length > 0) {
+          // Rebroadcast out of all other enabled ports
+          for (const outCable of outgoingCables) {
+            const nextType = outCable.uType === "switch" && outCable.u === sw.id ? outCable.vType : outCable.uType;
+            const nextId = outCable.uType === "switch" && outCable.u === sw.id ? outCable.v : outCable.u;
+            const nextLayer =
+              circle.fromType === "router"
+                ? 2
+                : nextType === "router"
+                ? 1
+                : circle.expectedLayer + 1;
+
+            spawnCircle("switch", sw.id, nextType, nextId, outCable.id, nextLayer, localError);
+          }
+        } else if (localError || rootErrorDetected || priorityErrorDetected) {
+          // Setup is wrong at or before this leaf switch: circle does not disappear, bounces back
+          const prevLayer = Math.max(1, circle.expectedLayer - 1);
+          spawnCircle("switch", sw.id, circle.fromType, circle.fromId, cable.id, prevLayer, true);
+        }
+        // Otherwise, if setup is right and this is a leaf switch, the circle cleanly disappears!
+      }
+
+      function evaluateWhenCirclesDisappear() {
+        // Did every switch receive the broadcast without any storm or errors?
+        const allSwitchesReached = switches.every((sw) => sw.receivedPacket);
+        const noDisabledSwitches = switches.every(
+          (sw) => getSwitchEnabledCableCount(sw.id) > 0
+        );
+
+        if (
+          allSwitchesReached &&
+          noDisabledSwitches &&
+          !stormDetected &&
+          !priorityErrorDetected &&
+          !rootErrorDetected &&
+          rootSwitchId === 0
+        ) {
+          // STAGE COMPLETE!
+          simRunning = false;
+          btnSendPacket.disabled = false;
+          updateHudUI();
+
+          if (currentStageIdx < STAGES.length - 1) {
+            showOverlay({
+              isError: false,
+              title: `STAGE ${STAGES[currentStageIdx].number} COMPLETE!`,
+              subtitle: "NO BROADCAST STORM — SPANNING TREE VERIFIED",
+              desc: "All broadcast circles reached the leaf switches and disappeared cleanly without looping back to the router.",
+              showNext: true
+            });
+          } else {
+            showOverlay({
+              isError: false,
+              title: "ALL 4 STAGES COMPLETED!",
+              subtitle: "SPANNING TREE PROTOCOL MASTER",
+              desc: "You configured all 4 networks with zero broadcast storms and accurate layer priorities!",
+              showNext: false
+            });
+          }
+        } else {
+          // Not all switches were reached (e.g. a switch had all ports disabled or was isolated)
+          // Keep sending a circle from the router so circles remain on screen until fixed or 15s expires
+          const routerCable = cables[0];
+          if (routerCable.enabled) {
+            spawnCircle("router", 0, "switch", routerCable.v, routerCable.id, 1, true);
+          } else {
+            // Even the router cable was disabled — bounce circle at router
+            circles.push({
+              fromType: "router",
+              fromId: 0,
+              toType: "router",
+              toId: 0,
+              cableId: 0,
+              expectedLayer: 1,
+              bounce: true,
+              progress: 0,
+              duration: 0.6,
+              x: router.x,
+              y: router.y + 18
+            });
+          }
+        }
+      }
+
+      function triggerGameOverTimeout() {
+        simRunning = false;
+        btnSendPacket.disabled = false;
+        router.errorText = "ERROR - Too many broadcasts";
+        updateHudUI();
+
+        let reason =
+          "Broadcast circles remained active after the 15-second limit and overwhelmed the router with looped frames.";
+        if (rootErrorDetected || rootSwitchId !== 0) {
+          reason =
+            "The Root Switch was not elected correctly! Make sure the switch directly connected to the Router triangle is elected as Root (Yellow).";
+        } else if (priorityErrorDetected) {
+          reason =
+            "Switch priority mismatch! Remember: Root switch is priority 1, 2nd-layer switches are priority 2, 3rd-layer switches are priority 3, etc.";
+        } else if (!switches.every((sw) => sw.receivedPacket)) {
+          reason =
+            "Some switches were disconnected from the Spanning Tree or had all ports disabled (Red), preventing full broadcast completion.";
+        }
+
+        showOverlay({
+          isError: true,
+          title: "ERROR - Too many broadcasts",
+          subtitle: "GAME OVER — 15.0s TIME LIMIT EXPIRED",
+          desc: reason,
+          showNext: false
+        });
+      }
+
+      function updateSimulation(dt) {
+        // Decay switch pulse animation
+        for (const sw of switches) {
+          if (sw.pulseTime > 0) {
+            sw.pulseTime = Math.max(0, sw.pulseTime - dt);
+          }
+        }
+
+        if (!simRunning) return;
+
+        timeRemaining = Math.max(0, timeRemaining - dt);
+
+        // Advance all active broadcast circles
+        const arrived = [];
+        const stillMoving = [];
+
+        for (const c of circles) {
+          c.progress += dt / c.duration;
+          const start = getEntityCoords(c.fromType, c.fromId);
+          const end = getEntityCoords(c.toType, c.toId);
+          const t = Math.min(1, c.progress);
+          c.x = start.x + (end.x - start.x) * t;
+          c.y = start.y + (end.y - start.y) * t;
+
+          if (c.progress >= 1) {
+            arrived.push(c);
+          } else {
+            stillMoving.push(c);
+          }
+        }
+
+        circles = stillMoving;
+        for (const c of arrived) {
+          handleCircleArrival(c);
+        }
+
+        // Check if all circles disappeared
+        if (circles.length === 0) {
+          evaluateWhenCirclesDisappear();
+          if (!simRunning) return;
+        }
+
+        // Check 15-second timeout: if any circle remains when 15 seconds are up -> Game Over
+        if (timeRemaining <= 0 && circles.length > 0) {
+          triggerGameOverTimeout();
+          return;
+        }
+
+        updateHudUI();
+      }
+
+      /* ========================================================================
+         Canvas Rendering (Gruvbox Dark Hard Visuals)
+         ======================================================================== */
+      function drawGrid() {
+        ctx.fillStyle = COLORS.bgHard;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = "rgba(60, 56, 54, 0.38)";
+        ctx.lineWidth = 1;
+        const step = 30;
+        ctx.beginPath();
+        for (let x = step; x < canvas.width; x += step) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+        }
+        for (let y = step; y < canvas.height; y += step) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+        }
+        ctx.stroke();
+      }
+
+      function getPortEndpoint(fromX, fromY, toX, toY, offsetDist) {
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const len = Math.hypot(dx, dy) || 1;
+        return {
+          x: fromX + (dx / len) * offsetDist,
+          y: fromY + (dy / len) * offsetDist
+        };
+      }
+
+      function drawCables() {
+        for (const c of cables) {
+          const uPos = getEntityCoords(c.uType, c.u);
+          const vPos = getEntityCoords(c.vType, c.v);
+          const isHovered = hoveredItem && hoveredItem.type === "cable" && hoveredItem.id === c.id;
+
+          // Enabled = Green, Disabled = Red
+          const strokeColor = c.enabled ? COLORS.greenBright : COLORS.redBright;
+
+          if (isHovered) {
+            ctx.save();
+            ctx.strokeStyle = COLORS.fg0;
+            ctx.lineWidth = 8;
+            ctx.globalAlpha = 0.28;
+            ctx.beginPath();
+            ctx.moveTo(uPos.x, uPos.y);
+            ctx.lineTo(vPos.x, vPos.y);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = c.enabled ? 4 : 3;
+          if (!c.enabled) {
+            ctx.setLineDash([8, 6]);
+          }
+          ctx.beginPath();
+          ctx.moveTo(uPos.x, uPos.y);
+          ctx.lineTo(vPos.x, vPos.y);
+          ctx.stroke();
+          ctx.restore();
+
+          // Draw Ethernet Port indicators at cable ends
+          const p1 = getPortEndpoint(uPos.x, uPos.y, vPos.x, vPos.y, c.uType === "router" ? 26 : 44);
+          const p2 = getPortEndpoint(vPos.x, vPos.y, uPos.x, uPos.y, 44);
+
+          for (const pt of [p1, p2]) {
+            ctx.fillStyle = c.enabled ? COLORS.greenBright : COLORS.redBright;
+            ctx.strokeStyle = COLORS.bgHard;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, isHovered ? 6.5 : 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawRouter() {
+        const { x, y, radius } = router;
+        const isRootConnected = rootSwitchId === 0 && cables[0] && cables[0].enabled;
+
+        // Triangle vertices for Router
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, y - radius);
+        ctx.lineTo(x + radius * 1.15, y + radius * 0.85);
+        ctx.lineTo(x - radius * 1.15, y + radius * 0.85);
+        ctx.closePath();
+
+        ctx.fillStyle = stormDetected
+          ? COLORS.redBright
+          : isRootConnected
+          ? COLORS.aquaBright
+          : COLORS.bg2;
+        ctx.fill();
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = stormDetected ? COLORS.fg0 : COLORS.fg1;
+        ctx.stroke();
+
+        // Router Label
+        ctx.fillStyle = stormDetected ? COLORS.bgHard : isRootConnected ? COLORS.bgHard : COLORS.fg0;
+        ctx.font = "bold 10px ui-monospace, monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("RTR", x, y + 5);
+
+        // Status banner next to Router triangle
+        ctx.textAlign = "left";
+        ctx.font = "bold 12px ui-monospace, monospace";
+        if (router.errorText) {
+          ctx.fillStyle = COLORS.redBright;
+          ctx.fillText(router.errorText, x + 38, y + 2);
+        } else {
+          ctx.fillStyle = isRootConnected ? COLORS.aquaBright : COLORS.fg4;
+          ctx.fillText(
+            isRootConnected ? "ROUTER [ROOT LINKED]" : "ROUTER [SELECT ROOT BELOW]",
+            x + 38,
+            y + 2
+          );
+        }
+        ctx.restore();
+      }
+
+      function drawSwitches() {
+        const stage = STAGES[currentStageIdx];
+
+        for (const sw of switches) {
+          const enabledPorts = getSwitchEnabledCableCount(sw.id);
+          const isAllDisabled = enabledPorts === 0;
+          const isRoot = rootSwitchId === sw.id;
+          const isHovered = hoveredItem && hoveredItem.type === "switch" && hoveredItem.id === sw.id;
+
+          // 3 Switch Colors required:
+          // 1. All ports disabled -> Red
+          // 2. Root switch -> Yellow
+          // 3. Normal switch -> White (Gruvbox fg0/fg1)
+          let fillColor = COLORS.fg1;
+          let borderColor = COLORS.fg0;
+          let textColor = COLORS.bgHard;
+
+          if (isAllDisabled) {
+            fillColor = COLORS.redBright;
+            borderColor = COLORS.fg0;
+            textColor = COLORS.bgHard;
+          } else if (isRoot) {
+            fillColor = COLORS.yellowBright;
+            borderColor = COLORS.fg0;
+            textColor = COLORS.bgHard;
+          }
+
+          const rx = sw.x - sw.w / 2;
+          const ry = sw.y - sw.h / 2;
+
+          ctx.save();
+
+          // Pulse ring when packet arrives or hovered
+          if (sw.pulseTime > 0 || isHovered) {
+            ctx.strokeStyle = sw.hasError
+              ? COLORS.redBright
+              : isRoot
+              ? COLORS.yellowBright
+              : COLORS.aquaBright;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(rx - 4, ry - 4, sw.w + 8, sw.h + 8);
+          }
+
+          // Switch Rectangle Body
+          ctx.fillStyle = fillColor;
+          ctx.strokeStyle = sw.hasError ? COLORS.redBright : borderColor;
+          ctx.lineWidth = 2.5;
+          ctx.fillRect(rx, ry, sw.w, sw.h);
+          ctx.strokeRect(rx, ry, sw.w, sw.h);
+
+          if (!stage.hasPriority) {
+            // Stages 1 & 2: Clean Switch Label + Status
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 13px ui-monospace, monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(sw.label, sw.x, sw.y - 8);
+
+            ctx.font = "bold 10px ui-monospace, monospace";
+            let statusTag = "SWITCH";
+            if (isAllDisabled) statusTag = "ALL PORTS OFF";
+            else if (isRoot) statusTag = "★ ROOT";
+            ctx.fillText(statusTag, sw.x, sw.y + 10);
+          } else {
+            // Stages 3 & 4: Switch Rectangle with [ROOT] top bar + Simplified Priority Number inside
+            const headerH = 20;
+            ctx.fillStyle = "rgba(29, 32, 33, 0.18)";
+            ctx.fillRect(rx, ry, sw.w, headerH);
+
+            ctx.beginPath();
+            ctx.moveTo(rx, ry + headerH);
+            ctx.lineTo(rx + sw.w, ry + headerH);
+            ctx.strokeStyle = "rgba(29, 32, 33, 0.35)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = textColor;
+            ctx.font = "bold 10px ui-monospace, monospace";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText(sw.label, rx + 6, ry + headerH / 2);
+
+            // [ROOT] toggle badge in top-right of rectangle
+            ctx.textAlign = "right";
+            ctx.fillText(isRoot ? "★ ROOT" : "[ROOT]", rx + sw.w - 6, ry + headerH / 2);
+
+            // Priority value inside the rectangle body
+            const bodyCenterY = ry + headerH + (sw.h - headerH) / 2;
+            ctx.textAlign = "center";
+            ctx.font = "bold 18px ui-monospace, monospace";
+            const priText = isAllDisabled ? "OFF" : `PRI: ${sw.priority}`;
+            ctx.fillText(priText, sw.x, bodyCenterY + 1);
+          }
+
+          ctx.restore();
+        }
+      }
+
+      function drawBroadcastCircles() {
+        for (const c of circles) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, 8, 0, Math.PI * 2);
+          ctx.fillStyle = c.bounce || stormDetected ? COLORS.redBright : COLORS.orangeBright;
+          ctx.fill();
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = COLORS.fg0;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function renderFrame(now) {
+        const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+        lastFrameTime = now;
+
+        updateSimulation(dt);
+
+        drawGrid();
+        drawCables();
+        drawRouter();
+        drawSwitches();
+        drawBroadcastCircles();
+
+        requestAnimationFrame(renderFrame);
+      }
+
+      /* ========================================================================
+         Hit Testing & Player Input
+         ======================================================================== */
+      function getCanvasPoint(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (evt.clientX - rect.left) * scaleX,
+          y: (evt.clientY - rect.top) * scaleY
+        };
+      }
+
+      function hitTest(px, py) {
+        // 1. Check Switches (Rectangles)
+        for (let i = switches.length - 1; i >= 0; i--) {
+          const sw = switches[i];
+          const rx = sw.x - sw.w / 2;
+          const ry = sw.y - sw.h / 2;
+          if (px >= rx && px <= rx + sw.w && py >= ry && py <= ry + sw.h) {
+            const inHeader = py <= ry + 21;
+            return { type: "switch", id: sw.id, inHeader };
+          }
+        }
+
+        // 2. Check Cables / Ethernet Ports
+        let bestCable = null;
+        let bestDist = 13;
+        for (const c of cables) {
+          const uPos = getEntityCoords(c.uType, c.u);
+          const vPos = getEntityCoords(c.vType, c.v);
+          const d = distToSegment(px, py, uPos.x, uPos.y, vPos.x, vPos.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestCable = c;
+          }
+        }
+
+        if (bestCable) {
+          return { type: "cable", id: bestCable.id };
+        }
+
+        return null;
+      }
+
+      function handleSwitchClick(swId, inHeader, isRightClick) {
+        const stage = STAGES[currentStageIdx];
+        const sw = switches[swId];
+        sw.hasError = false;
+
+        if (!stage.hasPriority) {
+          // Stages 1 & 2: Clicking a switch elects it as Root Switch
+          rootSwitchId = sw.id;
+        } else {
+          // Stages 3 & 4: Simplified Priority + Root election
+          const maxLayer = switches.length;
+          if (isRightClick || inHeader) {
+            // Clicked [ROOT] header bar or Right-Clicked -> Elect Root and set priority to 1
+            rootSwitchId = sw.id;
+            sw.priority = 1;
+          } else {
+            // Clicked switch rectangle body -> Increment priority number inside switch (1 = root, 2 = 2nd layer, etc.)
+            sw.priority = (sw.priority + 1) % (maxLayer + 1);
+
+            if (sw.priority === 1) {
+              if (rootSwitchId === null || switches[rootSwitchId].priority !== 1) {
+                rootSwitchId = sw.id;
+              }
+            } else if (rootSwitchId === sw.id) {
+              const otherOne = switches.find((s) => s.id !== sw.id && s.priority === 1);
+              rootSwitchId = otherOne ? otherOne.id : null;
+            }
+          }
+        }
+
+        updateHudUI();
+      }
+
+      canvas.addEventListener("mousemove", (evt) => {
+        const pt = getCanvasPoint(evt);
+        hoveredItem = hitTest(pt.x, pt.y);
+        canvas.style.cursor = hoveredItem ? "pointer" : "default";
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        hoveredItem = null;
+      });
+
+      canvas.addEventListener("click", (evt) => {
+        const pt = getCanvasPoint(evt);
+        const hit = hitTest(pt.x, pt.y);
+        if (!hit) return;
+
+        if (hit.type === "switch") {
+          handleSwitchClick(hit.id, hit.inHeader, false);
+        } else if (hit.type === "cable") {
+          const cable = cables.find((c) => c.id === hit.id);
+          if (cable) {
+            cable.enabled = !cable.enabled;
+            updateHudUI();
+          }
+        }
+      });
+
+      canvas.addEventListener("contextmenu", (evt) => {
+        const pt = getCanvasPoint(evt);
+        const hit = hitTest(pt.x, pt.y);
+        if (hit && hit.type === "switch") {
+          evt.preventDefault();
+          handleSwitchClick(hit.id, true, true);
+        }
+      });
+
+      /* ========================================================================
+         Buttons & Stage Controls
+         ======================================================================== */
+      btnSendPacket.addEventListener("click", () => {
+        startPacketCheck();
+      });
+
+      btnResetStage.addEventListener("click", () => {
+        generateStage(currentStageIdx);
+      });
+
+      btnOverlayRetry.addEventListener("click", () => {
+        if (currentStageIdx === STAGES.length - 1 && !overlayCard.classList.contains("error-card")) {
+          // Play Again from Stage 1 after completing all 4 stages
+          currentStageIdx = 0;
+        }
+        generateStage(currentStageIdx);
+      });
+
+      btnOverlayNext.addEventListener("click", () => {
+        if (currentStageIdx < STAGES.length - 1) {
+          currentStageIdx++;
+          generateStage(currentStageIdx);
+        }
+      });
+
+      /* ========================================================================
+         Initialize Game
+         ======================================================================== */
+      generateStage(0);
+      requestAnimationFrame(renderFrame);
+    })();
+  </script>
+</body>
+</html>
